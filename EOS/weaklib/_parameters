@@ -1,0 +1,2 @@
+# Weaklib EOS table name
+weaklib_eos_table_name      character  "EquationOfStateTable.h5"

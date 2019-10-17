@@ -12,6 +12,12 @@ USE_OMP    = FALSE
 
 USE_REACT = TRUE
 
+# Are we using weaklib?
+USE_WEAKLIB = FALSE
+
+# Are we using HDF5?
+USE_HDF5 = FALSE
+
 EBASE = main
 
 # define the location of the CASTRO top directory

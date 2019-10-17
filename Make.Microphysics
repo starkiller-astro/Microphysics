@@ -1,6 +1,8 @@
 AMREX_HOME ?= /path/to/amrex
 MICROPHYSICS_HOME ?= /path/to/Castro
 CVODE_HOME ?= /path/to/CVODE
+WEAKLIB_HOME ?= /path/to/weaklib
+HDF5_HOME ?= /path/to/hdf5
 
 # default is not to compile with CUDA
 USE_CUDA ?= FALSE
@@ -95,6 +97,7 @@ endif
 #------------------------------------------------------------------------------
 # CVODE directories
 #------------------------------------------------------------------------------
+
 ifeq ($(INTEGRATOR_DIR), CVODE)
 
   INCLUDE_LOCATIONS += $(CVODE_HOME)/include
@@ -120,6 +123,32 @@ endif
   endif
 
 endif
+
+
+#------------------------------------------------------------------------------
+# Weaklib directories
+#------------------------------------------------------------------------------
+
+ifeq ($(USE_WEAKLIB), TRUE)
+  DEFINES += -DMICROPHYSICS_WEAKLIB
+
+  Blocs += $(WEAKLIB_HOME)/Distributions/Library
+  Blocs += $(WEAKLIB_HOME)/Distributions/EOSSource
+  Blocs += $(WEAKLIB_HOME)/Distributions/OpacitySource
+endif
+
+
+#------------------------------------------------------------------------------
+# HDF5 Library
+#------------------------------------------------------------------------------
+
+ifeq ($(USE_HDF5), TRUE)
+  DEFINES += -DBL_HDF5
+  INCLUDE_LOCATIONS += $(HDF5_HOME)/include
+  LIBRARIES         += -L$(HDF5_HOME)/lib -lhdf5_fortran -lhdf5
+  LIBRARIES         += -Wl,-rpath=$(HDF5_HOME)/lib
+endif
+
 
 #------------------------------------------------------------------------------
 # Microphysics directories

@@ -19,6 +19,32 @@ module actual_eos_module
 
 contains
 
+
+  function eos_supports_input_type(input) result(supported)
+
+    use eos_type_module
+
+    implicit none
+
+    integer, intent(in) :: input
+    logical :: supported
+
+    if (input == eos_input_rt .or. &
+        input == eos_input_rp .or. &
+        input == eos_input_re .or. &
+        input == eos_input_tp) then
+
+       supported = .true.
+
+    else
+
+       supported = .false.
+
+    endif
+
+  end function eos_supports_input_type
+
+  
   ! EOS initialization routine 
   ! This reads in the HDF5 file containing the tabulated data
   subroutine actual_eos_init

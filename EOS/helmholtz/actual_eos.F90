@@ -124,9 +124,40 @@ module actual_eos_module
     !$acc create(dd_sav, dd2_sav, ddi_sav, dd2i_sav) &
     !$acc create(do_coulomb, input_is_constant)
 
-public actual_eos, actual_eos_init, actual_eos_finalize
+public actual_eos, actual_eos_init, actual_eos_finalize, eos_supports_input_type
 
 contains
+
+
+    function eos_supports_input_type(input) result(supported)
+
+        use eos_type_module
+
+        implicit none
+
+        integer, intent(in) :: input
+        logical :: supported
+
+        if (input == eos_input_rt .or. &
+            input == eos_input_rp .or. &
+            input == eos_input_rh .or. &
+            input == eos_input_re .or. &
+            input == eos_input_tp .or. &
+            input == eos_input_th .or. &
+            input == eos_input_ps .or. &
+            input == eos_input_ph) then
+
+            supported = .true.
+
+         else
+
+            supported = .false.
+
+         endif
+
+       end function eos_supports_input_type
+
+
 
     !  Frank Timmes Helmholtz based Equation of State
     !  http://cococubed.asu.edu/

@@ -1,0 +1,14 @@
+&extern
+
+  dens_min   = 1.d10
+  dens_max   = 1.d12
+  temp_min   = 1.d10
+  temp_max   = 1.d11
+
+  metalicity_max = 1.0d0
+
+  weaklib_eos_table_name = "EquationOfStateTable.h5"
+
+  weaklib_electron_fraction = 0.25d0
+
+/

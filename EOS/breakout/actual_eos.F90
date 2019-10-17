@@ -21,6 +21,32 @@ module actual_eos_module
 
 contains
 
+
+  function eos_supports_input_type(input) result(supported)
+
+    use eos_type_module
+
+    implicit none
+
+    integer, intent(in) :: input
+    logical :: supported
+
+    if (input == eos_input_rt .or. &
+        input == eos_input_rp .or. &
+        input == eos_input_re) then
+
+       supported = .true.
+
+    else
+
+       supported = .false.
+
+    endif
+
+  end function eos_supports_input_type
+
+
+
   subroutine actual_eos_init
 
     use extern_probin_module, only: eos_gamma

@@ -24,7 +24,7 @@ subroutine do_eos(lo, hi, &
   type(eos_t) :: eos_state
   type(eos_t) :: eos_state_reference
 
-  integer :: ii, jj, kk
+  integer :: ii, jj, kk, index_h1, index_he4
 
   !$gpu
   
@@ -36,9 +36,17 @@ subroutine do_eos(lo, hi, &
 
      ! set the composition -- approximately solar
      metalicity = ZERO + dble(kk)*dmetal
-     xn_zone(:) = metalicity/(nspec - 2)   ! all but H, He
-     xn_zone(ih1)  = 0.75_rt - HALF*metalicity
-     xn_zone(ihe4) = 0.25_rt - HALF*metalicity
+
+     index_h1  = network_species_index("hydrogen-1")
+     index_he4 = network_species_index("helium-4")
+
+     if (index_h1 == -1 .or. index_he4 == -1) then
+        xn_zone(:) = metalicity/(nspec)
+     else
+        xn_zone(:) = metalicity/(nspec - 2)   ! all but H, He
+        xn_zone(index_h1)  = 0.75_rt - HALF*metalicity
+        xn_zone(index_he4) = 0.25_rt - HALF*metalicity
+     endif
 
      do jj = lo(2), hi(2)
         temp_zone = 10.0_rt**(log10(temp_min) + dble(jj)*dlogT)
@@ -55,8 +63,10 @@ subroutine do_eos(lo, hi, &
            sp(ii, jj, kk, p % itemp) = temp_zone
            sp(ii, jj, kk, p % ispec: p % ispec-1+nspec) = xn_zone(:)
 
-           ! call EOS using rho, T
-           call eos(eos_input_rt, eos_state)
+           if (eos_supports_input_type(eos_input_rt)) then
+              ! call EOS using rho, T
+              call eos(eos_input_rt, eos_state)
+           endif
 
            call copy_eos_t(eos_state_reference, eos_state)
 
@@ -65,120 +75,150 @@ subroutine do_eos(lo, hi, &
            sp(ii, jj, kk, p % ip) = eos_state % p
            sp(ii, jj, kk, p % is) = eos_state % s
 
+           if (eos_supports_input_type(eos_input_rh)) then
+              ! call EOS using rho, h
 
-           ! call EOS using rho, h
+              ! reset T to give it some work to do
+              eos_state % T = 100.d0
 
-           ! reset T to give it some work to do
-           eos_state % T = 100.d0
+              call eos(eos_input_rh, eos_state)
 
-           call eos(eos_input_rh, eos_state)
-
-           sp(ii, jj, kk, p % ierr_T_eos_rh) = &
-                abs(eos_state % T - temp_zone)/temp_zone
-
-           call copy_eos_t(eos_state, eos_state_reference)
-
-           
-           ! call EOS using T, p
-
-           ! reset rho to give it some work to do
-           eos_state % rho = 1.d0
-
-           call eos(eos_input_tp, eos_state)
-
-           sp(ii, jj, kk, p % ierr_rho_eos_tp) = &
-                abs(eos_state % rho - dens_zone)/dens_zone
-
-           call copy_eos_t(eos_state, eos_state_reference)
-
-           
-           ! call EOS using r, p
-
-           ! reset T to give it some work to do
-           eos_state % T = 100.d0
-
-           call eos(eos_input_rp, eos_state)
-
-           sp(ii, jj, kk, p % ierr_T_eos_rp) = &
-                abs(eos_state % T - temp_zone)/temp_zone
-
-           call copy_eos_t(eos_state, eos_state_reference)
-
-
-           ! call EOS using r, e
-
-           ! reset T to give it some work to do
-           eos_state % T = 100.d0
-
-           call eos(eos_input_re, eos_state)
-
-           sp(ii, jj, kk, p % ierr_T_eos_re) = &
-                abs(eos_state % T - temp_zone)/temp_zone
-
-           call copy_eos_t(eos_state, eos_state_reference)
-
-
-           ! call EOS using p, s
-
-           ! reset T and rho to give it some work to do
-           eos_state % T = 100.d0
-           eos_state % rho = 1.d0
-
-
-           ! some EOSes don't have physically valid treatments
-           ! of entropy throughout the entire rho-T plane
-           if (eos_state%s > ZERO) then
-
-              call eos(eos_input_ps, eos_state)
-
-              ! store the thermodynamic state
-              sp(ii, jj, kk, p % ierr_T_eos_ps) = &
+              sp(ii, jj, kk, p % ierr_T_eos_rh) = &
                    abs(eos_state % T - temp_zone)/temp_zone
-              sp(ii, jj, kk, p % ierr_rho_eos_ps) = &
+
+              call copy_eos_t(eos_state, eos_state_reference)
+           else
+              sp(ii, jj, kk, p % ierr_T_eos_rh) = ZERO
+           endif
+
+
+
+           if (eos_supports_input_type(eos_input_tp)) then
+              ! call EOS using T, p
+
+              ! reset rho to give it some work to do
+              eos_state % rho = 1.d0
+
+              call eos(eos_input_tp, eos_state)
+
+              sp(ii, jj, kk, p % ierr_rho_eos_tp) = &
                    abs(eos_state % rho - dens_zone)/dens_zone
 
+              call copy_eos_t(eos_state, eos_state_reference)              
+           else
+              sp(ii, jj, kk, p % ierr_rho_eos_tp) = ZERO
+           endif
+
+
+
+           if (eos_supports_input_type(eos_input_rp)) then
+              ! call EOS using r, p
+
+              ! reset T to give it some work to do
+              eos_state % T = 100.d0
+
+              call eos(eos_input_rp, eos_state)
+
+              sp(ii, jj, kk, p % ierr_T_eos_rp) = &
+                   abs(eos_state % T - temp_zone)/temp_zone
+
+              call copy_eos_t(eos_state, eos_state_reference)              
+           else
+              sp(ii, jj, kk, p % ierr_T_eos_rp) = ZERO
+           endif
+
+
+
+           if (eos_supports_input_type(eos_input_re)) then
+              ! call EOS using r, e
+
+              ! reset T to give it some work to do
+              eos_state % T = 100.d0
+
+              call eos(eos_input_re, eos_state)
+
+              sp(ii, jj, kk, p % ierr_T_eos_re) = &
+                   abs(eos_state % T - temp_zone)/temp_zone
+
+              call copy_eos_t(eos_state, eos_state_reference)              
+           else
+              sp(ii, jj, kk, p % ierr_T_eos_re) = ZERO
+           endif
+
+
+
+           if (eos_supports_input_type(eos_input_ps)) then
+              ! call EOS using p, s
+
+              ! reset T and rho to give it some work to do
+              eos_state % T = 100.d0
+              eos_state % rho = 1.d0
+
+
+              ! some EOSes don't have physically valid treatments
+              ! of entropy throughout the entire rho-T plane
+              if (eos_state%s > ZERO) then
+
+                 call eos(eos_input_ps, eos_state)
+
+                 ! store the thermodynamic state
+                 sp(ii, jj, kk, p % ierr_T_eos_ps) = &
+                      abs(eos_state % T - temp_zone)/temp_zone
+                 sp(ii, jj, kk, p % ierr_rho_eos_ps) = &
+                      abs(eos_state % rho - dens_zone)/dens_zone
+
+              else
+                 sp(ii, jj, kk, p % ierr_T_eos_ps) = ZERO
+                 sp(ii, jj, kk, p % ierr_rho_eos_ps) = ZERO
+
+              endif
+
+              call copy_eos_t(eos_state, eos_state_reference)
            else
               sp(ii, jj, kk, p % ierr_T_eos_ps) = ZERO
               sp(ii, jj, kk, p % ierr_rho_eos_ps) = ZERO
-
            endif
 
-           call copy_eos_t(eos_state, eos_state_reference)
+
+           if (eos_supports_input_type(eos_input_ph)) then
+              ! call EOS using p, h
+
+              ! reset T and rho to give it some work to do
+              eos_state % T = 100.d0
+              eos_state % rho = 1.d0
+
+              call eos(eos_input_ph, eos_state)
+
+              sp(ii, jj, kk, p % ierr_T_eos_ph) = &
+                   abs(eos_state % T - temp_zone)/temp_zone
+              sp(ii, jj, kk, p % ierr_rho_eos_ph) = &
+                   abs(eos_state % rho - dens_zone)/dens_zone
+
+              call copy_eos_t(eos_state, eos_state_reference)
+           else
+              sp(ii, jj, kk, p % ierr_T_eos_ph) = ZERO
+              sp(ii, jj, kk, p % ierr_rho_eos_ph) = ZERO
+           endif
 
 
-           ! call EOS using p, h
 
-           ! reset T and rho to give it some work to do
-           eos_state % T = 100.d0
-           eos_state % rho = 1.d0
+           if (eos_supports_input_type(eos_input_th)) then
+              ! call EOS using T, h
+              ! this doesn't work for all EOSes (where h doesn't depend on T)
+              ! reset rho to give it some work to do -- for helmeos, h is not
+              ! monotonic, so we only perturb rho slightly here
+              eos_state % rho = 0.9 * eos_state % rho
 
-           call eos(eos_input_ph, eos_state)
+              call eos(eos_input_th, eos_state)
 
-           sp(ii, jj, kk, p % ierr_T_eos_ph) = &
-                abs(eos_state % T - temp_zone)/temp_zone
-           sp(ii, jj, kk, p % ierr_rho_eos_ph) = &
-                abs(eos_state % rho - dens_zone)/dens_zone
+              sp(ii, jj, kk, p % ierr_rho_eos_th) = &
+                   abs(eos_state % rho - dens_zone)/dens_zone
 
-           call copy_eos_t(eos_state, eos_state_reference)
+              call copy_eos_t(eos_state, eos_state_reference)
+           else
+              sp(ii, jj, kk, p % ierr_rho_eos_th) = ZERO
+           endif
 
-
-           ! call EOS using T, h
-           ! this doesn't work for all EOSes (where h doesn't depend on T)
-#ifndef EOS_GAMMA_LAW_GENERAL
-           ! reset rho to give it some work to do -- for helmeos, h is not
-           ! monotonic, so we only perturb rho slightly here
-           eos_state % rho = 0.9 * eos_state % rho
-
-           call eos(eos_input_th, eos_state)
-
-           sp(ii, jj, kk, p % ierr_rho_eos_th) = &
-                abs(eos_state % rho - dens_zone)/dens_zone
-
-           call copy_eos_t(eos_state, eos_state_reference)
-
-#else
-           sp(ii, jj, kk, p % ierr_rho_eos_th) = ZERO
-#endif
         enddo
      enddo
   enddo

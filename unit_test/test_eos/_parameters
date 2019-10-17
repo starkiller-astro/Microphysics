@@ -7,5 +7,7 @@ metalicity_max  real     0.1d0
 
 test_set      character  "gr0_3d"
 
-small_temp    real        1.e4
-small_dens    real        1.e-4
+small_temp    real        1.d4
+small_dens    real        1.d-4
+
+weaklib_electron_fraction    real        0.25d0

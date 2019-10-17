@@ -90,7 +90,7 @@ void main_main ()
 
     std::string probin_file = "probin";
 
-    ppa.query("probin_file", probin_file);
+    ppa.query("probin", probin_file);
 
     const int probin_file_length = probin_file.length();
     Vector<int> probin_file_name(probin_file_length);

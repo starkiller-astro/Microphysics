@@ -43,6 +43,37 @@ module actual_eos_module
 
 contains
 
+
+  function eos_supports_input_type(input) result(supported)
+
+    use eos_type_module
+
+    implicit none
+
+    integer, intent(in) :: input
+    logical :: supported
+
+    if (input == eos_input_rt .or. &
+        input == eos_input_rp .or. &
+        input == eos_input_rh .or. &
+        input == eos_input_re .or. &
+        input == eos_input_tp .or. &
+        input == eos_input_th .or. &
+        input == eos_input_ps .or. &
+        input == eos_input_ph) then
+
+       supported = .true.
+
+    else
+
+       supported = .false.
+
+    endif
+
+  end function eos_supports_input_type
+
+
+
   subroutine actual_eos_init
 
     use extern_probin_module, only: polytrope_gamma, polytrope_K, polytrope_type, polytrope_mu_e

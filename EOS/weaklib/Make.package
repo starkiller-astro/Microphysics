@@ -1,0 +1,19 @@
+F90EXE_sources += actual_eos.F90
+F90EXE_sources += weaklib_type.F90
+
+# In weaklib/Distributions/Library
+f90EXE_sources += wlKindModule.f90
+f90EXE_sources += wlGridModule.f90
+f90EXE_sources += wlThermoStateModule.f90
+f90EXE_sources += wlDependentVariablesModule.f90
+f90EXE_sources += wlInterpolationModule.f90
+f90EXE_sources += wlIOModuleHDF.f90
+
+# In weaklib/Distributions/EOSSource
+f90EXE_sources += wlEquationOfStateTableModule.f90
+f90EXE_sources += wlEOSIOModuleHDF.f90
+
+# In weaklib/Distributions/OpacitySource
+f90EXE_sources += wlOpacityFieldsModule.f90
+f90EXE_sources += wlOpacityTableModule.f90
+f90EXE_sources += wlOpacityTableIOModuleHDF.f90

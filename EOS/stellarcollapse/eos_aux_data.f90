@@ -70,7 +70,7 @@ contains
     call h5fopen_f(trim(eos_input_file),H5F_ACC_RDONLY_F,file_id,error)
     if (error .ne. 0) &
          call amrex_error("EOS: couldn't open eos_file for reading")
-    
+
     ! get the number of density points
     ! open the dataset and get it's id
     dims1(1) = 1
@@ -148,7 +148,7 @@ contains
                    eos_table(:,:,:,idpderho),dims3,error)
     call h5dclose_f(dset_id,error)
     total_error = total_error + error
-    
+
     ! gamma_1
     call h5dopen_f(file_id,'gamma',dset_id,error)
     call h5dread_f(dset_id,H5T_NATIVE_DOUBLE, &
@@ -238,7 +238,7 @@ contains
     call h5dclose_f(dset_id,error)
     total_error = total_error + error
 
-    
+
     ! read in rho,t,ye grid
     ! log density (cgs)
     dims1(1) = nrho
@@ -265,7 +265,7 @@ contains
     total_error = total_error + error
 
 
-    ! get the energy shift that makes energy consistent amongst different EOS's 
+    ! get the energy shift that makes energy consistent amongst different EOS's
     ! that make up the table; this is in erg/g
     if (use_energy_shift) then
        call h5dopen_f(file_id,"energy_shift",dset_id,error)
@@ -277,7 +277,7 @@ contains
     if (amrex_pd_ioprocessor()) print *, 'stellarcollapse EOS energy_shift', energy_shift
 
     if (total_error .ne. 0) call amrex_error("EOS: Error reading EOS table")
-    
+
     ! close the file
     call h5fclose_f(file_id,error)
     ! cleanup library
@@ -293,7 +293,7 @@ contains
 
     mintemp_tbl = eos_logtemp(1)
     maxtemp_tbl = eos_logtemp(ntemp)
-    
+
     mintemp = 10.0**mintemp_tbl / temp_conv
     maxtemp = 10.0**maxtemp_tbl / temp_conv
 
@@ -316,8 +316,8 @@ contains
     integer,     intent(in   ) :: input
     type(eos_t), intent(inout) :: state
 
-    ! the stellarcollapse.org tables use some log10 variables, as well as 
-    ! units of MeV for temperature and chemical potential, and k_B / baryon 
+    ! the stellarcollapse.org tables use some log10 variables, as well as
+    ! units of MeV for temperature and chemical potential, and k_B / baryon
     ! for entropy
 
     ! Only take logs of quantities we can assume are defined
@@ -361,7 +361,7 @@ contains
     use fundamental_constants_module
     use eos_type_module
     use amrex_constants_module, only: TEN
-    
+
     implicit none
 
     type(eos_t), intent(inout) :: state
@@ -406,38 +406,61 @@ contains
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,ilogpress), &
                         state%p,derivs,err)
+
     ! this should only fail once because the same inputs are used throughout
     if (err) call amrex_error('table_lookup: tri-interpolate failure:',trim(errstring))
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,ilogenergy), &
                         state%e,derivs,err)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,ientropy), &
                         state%s,derivs,err)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,ics2), &
                         cs2,derivs,err)
     state%cs = sqrt(cs2)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,igamma), &
                         state%gam1,derivs,err)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,idedt), &
                         state%dedT,derivs,err)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,idpdrhoe), &
                         state%dpdr_e,derivs,err)
+
     call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
                         eos_logrho,eos_logtemp,eos_ye, &
                         eos_table(:,:,:,idpderho), &
                         state%dpde,derivs,err)
-    
+
+    call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
+                        eos_logrho,eos_logtemp,eos_ye, &
+                        eos_table(:,:,:,imu_e), &
+                        state%electron_chemical_potential,derivs,err)
+
+    call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
+                        eos_logrho,eos_logtemp,eos_ye, &
+                        eos_table(:,:,:,imu_p), &
+                        state%proton_chemical_potential,derivs,err)
+
+    call tri_interpolate(rho,temp,ye,nrho,ntemp,nye, &
+                        eos_logrho,eos_logtemp,eos_ye, &
+                        eos_table(:,:,:,imu_n), &
+                        state%neutron_chemical_potential,derivs,err)
+
   end subroutine table_lookup
 
 end module eos_aux_data_module
