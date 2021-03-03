@@ -43,7 +43,7 @@ class AmrexAstroModel(object):
                 raise
             else:
                 pass
-       self.model_data[field][index] = value
+        self.model_data[field][index] = value
 
     def reset(self):
         self.variables = ['radius']

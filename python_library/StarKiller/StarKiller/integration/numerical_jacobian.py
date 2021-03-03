@@ -7,4 +7,4 @@ class NumericalJacobian(object):
     def jacobian(self, burn_state):
         # state is a BurnType object
         # evaluate the numerical jacobian
-        self.NumericalJacModule.numerical_jac(burn_state.state)
+        self.NumericalJacModule.numerical_jac(burn_state.state, burn_state.jac)

@@ -3,34 +3,30 @@ import numpy as np
 from cycler import cycler
 import matplotlib.pyplot as plt
 from matplotlib import rc
-import StarKillerMicrophysics as SKM
+
+from StarKiller.initialization import starkiller_initialize
+from StarKiller.interfaces import EosType, BurnType
+from StarKiller.network import Network
+from StarKiller.eos import Eos
+from StarKiller.integration import Integrator
 
 rc('text', usetex=True)
 
 class BurnerDriver(object):
     def __init__(self, probin_file):
-        skinit = SKM.Starkiller_Initialization_Module.starkiller_initialize
-        skinit(probin_file)
+        starkiller_initialize(probin_file)
 
-        self.nspec = SKM.Actual_Network().nspec
-        self.short_species_names = [SKM.Network().get_network_short_species_name(i+1).decode("ASCII").strip().lower() for i in range(self.nspec)]
-        self.species_names = [SKM.Network().get_network_species_name(i+1).decode("ASCII").strip().lower() for i in range(self.nspec)]
+        self.eos = Eos()
+        self.network = Network()
+        self.integrator = Integrator()
 
         self.history = BurnHistory()
         self.plotting = BurnPlotting()
 
-        self.burn_module = SKM.Actual_Burner_Module()
-        self.burn_type_module = SKM.Burn_Type_Module()
-
-        self.eos_module = SKM.Eos_Module()
-        self.eos_type_module = SKM.Eos_Type_Module()
-
-        self.rhs_module = SKM.actual_rhs_module
-
-        self.initial_burn_state = self.burn_type_module.burn_t()
-        self.initial_burn_state.rho = 0.0
-        self.initial_burn_state.t = 0.0
-        self.initial_burn_state.xn = np.zeros(self.nspec, dtype=np.float64)
+        self.initial_burn = BurnType()
+        self.initial_burn.state.rho = 0.0
+        self.initial_burn.state.t = 0.0
+        self.initial_burn.state.xn = np.zeros(self.nspec, dtype=np.float64)
 
         self.end_time = 0.0
         self.num_steps = 0
@@ -38,34 +34,35 @@ class BurnerDriver(object):
 
     def list_species(self):
         print("Species in network:\n")
-        for sname, short_sname in zip(self.species_names, self.short_species_names):
+        for sname, short_sname in zip(self.network.species_names, self.network.short_species_names):
             print("{} ({})".format(sname, short_sname))
 
     def set_initial_density(self, dens):
-        self.initial_burn_state.rho = dens
+        self.initial_burn.state.rho = dens
 
     def set_initial_temperature(self, temp):
-        self.initial_burn_state.t = temp
+        self.initial_burn.state.t = temp
 
     def set_initial_massfractions(self, xn):
-        self.initial_burn_state.xn = xn[:]
+        self.initial_burn.state.xn = xn[:]
 
     def set_initial_species(self, species_name, xspec):
         sname = species_name.lower()
-        idx = -1
+
         try:
-            idx = self.short_species_names.index(sname)
+            idx = self.network.species_map[sname]
         except ValueError:
             try:
-                idx = self.species_names.index(sname)
+                idx = self.network.species_map[self.network.long_short_species_map[sname]]
             except ValueError:
                 print("ERROR: species {} is not in this network.".format(species_name))
                 self.list_species()
                 return
-        self.initial_burn_state.xn[idx] = xspec
+
+        self.initial_burn.xn[idx] = xspec
 
     def get_initial_state(self):
-        return self.initial_burn_state
+        return self.initial_burn
 
     def burn(self, end_time, num_steps):
         self.history = BurnHistory()
@@ -75,25 +72,20 @@ class BurnerDriver(object):
 
         current_time = 0.0
 
-        state_in = self.burn_type_module.burn_t()
-        state_out = self.burn_type_module.burn_t()
-        
-        self.burn_type_module.copy_burn_t(state_in, self.initial_burn_state)
-        self.burn_type_module.copy_burn_t(state_out, self.initial_burn_state)
+        state_in = self.initial_burn.copy()
         
         for istep in range(self.num_steps):
-            self.burn_module.actual_burner(state_in, state_out, self.dt, 0.0)
+            state_out = self.integrator.integrate(state_in, self.dt)
             current_time = current_time + self.dt
             self.history.store(state_out, current_time, self.dt, istep+1)
-            self.burn_type_module.copy_burn_t(state_in, state_out)
+            state_in = state_out.copy()
 
         self.plotting.plot_burn_history(self.history)
 
     def eos(self, input, burn_state):
-        eos_state = self.eos_type_module.eos_t()
-        self.burn_type_module.burn_to_eos(burn_state, eos_state)
-        self.eos_module.eos(input, eos_state)
-        self.burn_type_module.eos_to_burn(eos_state, burn_state)
+        eos_state = burn_state.to_eos_type()
+        self.eos.evaluate(input, eos_state)
+        burn_state.from_eos_type(eos_state)
 
     def rhs(self, burn_state):
         # Call the EOS in (r,t) mode and then evaluate the rhs
@@ -106,7 +98,7 @@ class BurnerDriver(object):
         self.rhs_module.actual_jac(burn_state)
 
     def save(self, file_name):
-        self.history.save(self.species_names, self.initial_burn_state, file_name)
+        self.history.save(self.species_names, self.initial_burn, file_name)
 
     def get_temp_dot(self, burn_state):
         return burn_state.ydot[-2]

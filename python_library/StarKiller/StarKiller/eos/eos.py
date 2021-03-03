@@ -9,6 +9,7 @@ class Eos(object):
 
     def evaluate(self, input_mode, input_state, use_raw_inputs=False):
         self.EosModule.eos(input_mode, input_state.state, use_raw_inputs)
+        input_state.update_composition()
 
     @staticmethod
     def _initialize_safe():
