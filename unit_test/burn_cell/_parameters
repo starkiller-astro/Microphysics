@@ -9,7 +9,7 @@ small_dens    real       1.e5
 tmax          real       1.e-2
 
 # first output time -- we will output in nsteps logarithmically spaced steps between [tfirst, tmax]
-tfirst        real       0.0
+tfirst        real       1.e-10
 
 # number of steps (logarithmically spaced)
 nsteps        integer    100

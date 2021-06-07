@@ -124,11 +124,7 @@ void burn_cell_c()
 
     Real dlogt = 0.0_rt;
 
-    if (tfirst == 0.0_rt) {
-        dlogt = std::log10(tmax) / nsteps;
-    } else {
-        dlogt = (std::log10(tmax) - std::log10(tfirst)) / (nsteps - 1);
-    }
+    dlogt = (std::log10(tmax) - std::log10(tfirst)) / (nsteps - 1);
 
     // save the initial state -- we'll use this to determine
     // how much things changed over the entire burn
@@ -167,11 +163,10 @@ void burn_cell_c()
         // compute the time we wish to integrate to
 
         Real tend;
-        if (tfirst == 0.0_rt) {
-            tend = std::pow(10.0_rt, dlogt * (n + 1));
-        } else {
-            tend = std::pow(10.0_rt, std::log10(tfirst) + dlogt * n);
-        }
+        tend = std::pow(10.0_rt, std::log10(tfirst) + dlogt * n);
+
+        // the burner always starts integrating from 0, so pass in just
+        // the change in time we want to accomplish over this burn
 
         Real dt = tend - t;
 
