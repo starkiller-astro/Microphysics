@@ -221,6 +221,10 @@ int dvstep (burn_t& state, dvode_t& vstate)
 #endif
 #endif
 
+#ifdef SIMPLIFIED_SDC
+        Real sum_rhoX = 0.0_rt;
+#endif
+
         for (int i = 1; i <= NumSpec; ++i) {
 
 #ifdef STRANG
@@ -252,15 +256,9 @@ int dvstep (burn_t& state, dvode_t& vstate)
             // now we are evolving rhoX instead of X
 
 
-            // this doesn't seem to work well with SDC
-
-            //if (std::abs(y_save(SFS+i)) >= atol_spec * rho_current &&
-            //    (std::abs(vstate.y(SFS+i)) > vode_increase_change_factor * std::abs(y_save(SFS+i)) ||
-            //     std::abs(vstate.y(SFS+i)) < vode_decrease_change_factor * std::abs(y_save(SFS+i)))) {
-            //    valid_update = false;
-            //}
-
 #if defined(SDC_EVOLVE_ENERGY)
+            sum_rhoX += vstate.y(SFS+i);
+
             if (vstate.y(SFS+i) < -vode_failure_tolerance * rho_current) {
                 valid_update = false;
             }
@@ -291,6 +289,15 @@ int dvstep (burn_t& state, dvode_t& vstate)
 
 
         }
+
+#ifdef SIMPLIFIED_SDC
+#if defined(SDC_EVOLVE_ENERGY)
+        if (std::abs(sum_rhoX - rho_current) > vode_failure_tolerance * rho_current) {
+            valid_update = false;
+        }
+#endif
+#endif
+
 
         // The corrector has converged (NFLAG = 0). The local error test is
         // made and control passes to statement 500 if it fails.
