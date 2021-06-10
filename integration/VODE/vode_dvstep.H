@@ -207,6 +207,18 @@ int dvstep (burn_t& state, dvode_t& vstate)
 
         bool valid_update = true;
 
+#ifdef TRUE_SDC
+        if (vstate.y(1) < 0.0_rt) {
+            // density is negative
+            valid_update = false;
+        }
+
+        if (vstate.y(NumSpec+2) < 0.0_rt) {
+            // rho e is negative
+            valid_update = false;
+        }
+#endif
+
 #ifdef SIMPLIFIED_SDC
 #if defined(SDC_EVOLVE_ENERGY)
 	if (vstate.y(SEDEN+1) < 0.0_rt || vstate.y(SEINT+1) < 0.0_rt) {
@@ -280,13 +292,20 @@ int dvstep (burn_t& state, dvode_t& vstate)
             //  y(2:2+NumSpec-1) = rho X
             //  y(NumSpec+2) = rho e
 
-            if (vstate.y(1+i) < -vode_failure_tolerance * vstate.y(1)) {
+            if (vstate.y(1+i) < -vode_failure_tolerance * std::abs(vstate.y(1))) {
                 valid_update = false;
             }
 
-            if (vstate.y(1+i) > (1.0_rt + vode_failure_tolerance) * vstate.y(1)) {
+            if (vstate.y(1+i) > (1.0_rt + vode_failure_tolerance) * std::abs(vstate.y(1))) {
                 valid_update = false;
             }
+
+            if (std::abs(y_save(1+i)) >= atol_spec * vstate.y(1) &&
+                (std::abs(vstate.y(1+i)) > vode_increase_change_factor * std::abs(y_save(1+i)) ||
+                 std::abs(vstate.y(1+i)) < vode_decrease_change_factor * std::abs(y_save(1+i)))) {
+                valid_update = false;
+            }
+
 #endif
 
 
