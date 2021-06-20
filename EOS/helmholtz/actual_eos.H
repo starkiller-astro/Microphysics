@@ -713,21 +713,21 @@ void apply_coulomb_corrections (T& state)
     const Real forth = 4.0e0_rt/3.0e0_rt;
     const Real pi    = 3.1415926535897932384e0_rt;
 
-    Real pcoul    = 0.e0_rt;
-    Real dpcouldd = 0.e0_rt;
-    Real dpcouldt = 0.e0_rt;
-    Real ecoul    = 0.e0_rt;
-    Real decouldd = 0.e0_rt;
-    Real decouldt = 0.e0_rt;
-    Real scoul    = 0.e0_rt;
-    Real dscouldd = 0.e0_rt;
-    Real dscouldt = 0.e0_rt;
+    [[maybe_unused]] Real pcoul    = 0.e0_rt;
+    [[maybe_unused]] Real dpcouldd = 0.e0_rt;
+    [[maybe_unused]] Real dpcouldt = 0.e0_rt;
+    [[maybe_unused]] Real ecoul    = 0.e0_rt;
+    [[maybe_unused]] Real decouldd = 0.e0_rt;
+    [[maybe_unused]] Real decouldt = 0.e0_rt;
+    [[maybe_unused]] Real scoul    = 0.e0_rt;
+    [[maybe_unused]] Real dscouldd = 0.e0_rt;
+    [[maybe_unused]] Real dscouldt = 0.e0_rt;
 
 #ifdef EXTRA_THERMO
-    Real dpcoulda = 0.e0_rt;
-    Real dpcouldz = 0.e0_rt;
-    Real decoulda = 0.e0_rt;
-    Real decouldz = 0.e0_rt;
+    [[maybe_unused]] Real dpcoulda = 0.e0_rt;
+    [[maybe_unused]] Real dpcouldz = 0.e0_rt;
+    [[maybe_unused]] Real decoulda = 0.e0_rt;
+    [[maybe_unused]] Real decouldz = 0.e0_rt;
 #endif
 
     Real s, x, y, z; // temporary variables
