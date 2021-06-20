@@ -221,6 +221,16 @@ int dvstep (burn_t& state, dvode_t& vstate)
 #endif
 #endif
 
+#ifdef STRANG
+        if (vstate.y(net_ienuc) < 0.0_rt) {
+            valid_update = false;
+        }
+
+        if (state.T > MAX_TEMP) {
+            valid_update = false;
+        }
+#endif
+
         for (int i = 1; i <= NumSpec; ++i) {
 
 #ifdef STRANG
