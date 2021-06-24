@@ -229,17 +229,17 @@ void iso7rat(const Real btemp, const Real bden,
     // c12 + c12
     rate_c12c12(tf,bden,
                 rate(C12_C12_to_Ne20_He4_forward),dratedt(C12_C12_to_Ne20_He4_forward),
-                rrate,drratedt);
+                rate(C12_C12_to_Ne20_He4_reverse),dratedt(C12_C12_to_Ne20_He4_reverse));
 
     // c12 + o16
     rate_c12o16(tf,bden,
                 rate(C12_O16_to_Mg24_He4_forward),dratedt(C12_O16_to_Mg24_He4_forward),
-                rrate,drratedt);
+                rate(C12_O16_to_Mg24_He4_reverse),dratedt(C12_O16_to_Mg24_He4_reverse));
 
     // 16o + 16o
     rate_o16o16(tf,bden,
                 rate(O16_O16_to_Si28_He4_forward),dratedt(O16_O16_to_Si28_He4_forward),
-                rrate,drratedt);
+                rate(O16_O16_to_Si28_He4_reverse),dratedt(O16_O16_to_Si28_He4_reverse));
 
     // o16(a,g)ne20
     rate_o16ag(tf,bden,
