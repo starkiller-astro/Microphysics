@@ -349,11 +349,6 @@ void screen_iso7(const Real btemp, const Real bden,
     dratedt(He4_He4_He4_to_C12_forward) = dratedt(He4_He4_He4_to_C12_forward) * sc3a + rate(He4_He4_He4_to_C12_forward) * sc3adt;
     rate(He4_He4_He4_to_C12_forward)    = rate(He4_He4_He4_to_C12_forward) * sc3a;
 
-    // Identical particle factor (He4 + He4 + He4)
-
-    rate(He4_He4_He4_to_C12_forward)    *= 1.0_rt / 6.0_rt;
-    dratedt(He4_He4_He4_to_C12_forward) *= 1.0_rt / 6.0_rt;
-
     // c12 to o16
     jscr++;
     screen5(pstate,jscr,
@@ -371,11 +366,6 @@ void screen_iso7(const Real btemp, const Real bden,
 
     dratedt(C12_C12_to_Ne20_He4_forward) = dratedt(C12_C12_to_Ne20_He4_forward) * sc1a + rate(C12_C12_to_Ne20_He4_forward) * sc1adt;
     rate(C12_C12_to_Ne20_He4_forward)    = rate(C12_C12_to_Ne20_He4_forward) * sc1a;
-
-    // Identical particle factor (C12 + C12)
-
-    rate(C12_C12_to_Ne20_He4_forward)    *= 0.5_rt;
-    dratedt(C12_C12_to_Ne20_He4_forward) *= 0.5_rt;
 
     // c12 + o16
     jscr++;
@@ -402,11 +392,6 @@ void screen_iso7(const Real btemp, const Real bden,
 
     dratedt(O16_O16_to_Si28_He4_forward) = dratedt(O16_O16_to_Si28_He4_forward) * sc1a + rate(O16_O16_to_Si28_He4_forward) * sc1adt;
     rate(O16_O16_to_Si28_He4_forward)    = rate(O16_O16_to_Si28_He4_forward) * sc1a;
-
-    // Identical particle factor (O16 + O16)
-
-    rate(O16_O16_to_Si28_He4_forward)    *= 0.5_rt;
-    dratedt(O16_O16_to_Si28_He4_forward) *= 0.5_rt;
 
     // o16 to ne20
     jscr++;
