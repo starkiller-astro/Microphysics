@@ -48,6 +48,4 @@ Blocs   := .
 
 include $(MICROPHYSICS_HOME)/unit_test/Make.unit_test
 
-clean::
-	$(RM) *.dat
 

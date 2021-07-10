@@ -42,17 +42,11 @@ ifndef GENERAL_NET_INPUTS
    endif
 endif
 
-# URCA network has tables
-ifeq ($(findstring URCA-simple, $(NETWORK_DIR)), URCA-simple)
-  all: urcatables
-endif
-
-urcatables:
-	@if [ ! -f 23Ne-23Na_betadecay.dat ]; then echo ${bold}Linking 23Ne-23Na_betadecay.dat${normal}; ln -s $(NETWORK_PATH)/23Ne-23Na_betadecay.dat .;  fi
-	@if [ ! -f 23Na-23Ne_electroncapture.dat ]; then echo ${bold}Linking 23Na-23Ne_electroncapture.dat${normal}; ln -s $(NETWORK_PATH)/23Na-23Ne_electroncapture.dat .;  fi
-
-# Pynucastro networks read rate data from an external file
+# Pynucastro networks read rate data from external files
 PYNUCASTRO_FILE := "$(NETWORK_PATH)/reaclib_rate_metadata.dat"
+EC_FILES := $(wildcard $(NETWORK_PATH)/*electroncapture.dat)
+BD_FILES := $(wildcard $(NETWORK_PATH)/*betadecay.dat)
+PARTITION_FILE := "$(NETWORK_PATH)/partition_function_table.dat"
 all: pynucastrorates
 
 
@@ -60,6 +54,9 @@ all: pynucastrorates
 # because different Reaclib networks will have different versions of the file
 pynucastrorates:
 	@if [ -f $(PYNUCASTRO_FILE) ] && [ ! -f ./reaclib_rate_metadata.dat ]; then echo Linking pynucastro rate file; ln -s $(PYNUCASTRO_FILE) .; fi
+	@if [ -f $(PARTITION_FILE) ] && [ ! -f ./partition_function_table.dat ]; then echo Linking pynucastro Partition Function Table; ln -s $(PARTITION_FILE) .; fi
+	@$(foreach file,$(EC_FILES), if [ -f "$(file)" ] && [ ! -f ./$(notdir $(file)) ]; then ln -s $(file) . ; fi ;)
+	@$(foreach file,$(BD_FILES), if [ -f "$(file)" ] && [ ! -f ./$(notdir $(file)) ]; then ln -s $(file) . ; fi ;) 
 
 EXTERN_CORE += $(EOS_HOME)
 EXTERN_CORE += $(EOS_PATH)
@@ -127,3 +124,9 @@ endif
 EXTERN_CORE += $(MICROPHYSICS_HOME)/constants
 
 
+clean::
+	if [ -L helm_table.dat ]; then rm -f helm_table.dat; fi
+	if [ -L reaclib_rate_metadata.dat ]; then rm -f reaclib_rate_metadata.dat; fi
+	if [ -L partition_function_table.dat ]; then rm -f partition_function_table.dat; fi
+	$(RM) *electroncapture.dat
+	$(RM) *betadecay.dat
