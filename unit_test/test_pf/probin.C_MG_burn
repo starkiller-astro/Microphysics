@@ -1,0 +1,21 @@
+&extern
+
+  small_dens = 1.0d0
+
+  dens_min   = 1.d4
+  dens_max   = 1.d8
+  temp_min   = 1.d10
+  temp_max   = 1.d10
+
+  tmax = 1.d-3
+
+  call_eos_in_rhs = T
+
+  use_partition_factors = T
+
+  primary_species_1 = "carbon-12"
+  primary_species_2 = "magnesium-23"
+  primary_species_3 = "neutron"
+
+/
+

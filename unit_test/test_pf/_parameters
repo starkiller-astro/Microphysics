@@ -1,0 +1,17 @@
+dens_min      real       1.d6
+dens_max      real       1.d9
+temp_min      real       1.d6
+temp_max      real       1.d15
+
+run_prefix    character  ""
+
+primary_species_1  character   ""
+primary_species_2  character   ""
+primary_species_3  character   ""
+
+tmax          real       0.1d0
+
+small_temp    real       1.e5
+small_dens    real       1.e5
+
+do_acc        integer    1

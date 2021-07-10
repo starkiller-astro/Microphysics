@@ -1,0 +1,6 @@
+n_cell = 16
+
+prefix = react_C_MG_burn_
+
+amr.probin_file = probin.C_MG_burn
+

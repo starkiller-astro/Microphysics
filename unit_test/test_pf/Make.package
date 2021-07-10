@@ -1,0 +1,12 @@
+CEXE_sources += main.cpp
+
+FEXE_headers += test_react_F.H
+CEXE_headers += test_react.H
+
+F90EXE_sources += variables.F90
+F90EXE_sources += rhs_zones.F90
+f90EXE_sources += unit_test.f90
+f90EXE_sources += util.f90
+
+CEXE_headers += variables.H
+CEXE_headers += rhs_zones.H
