@@ -15,7 +15,6 @@ unit_test.primary_species_1 = "hydrogen-1"
 unit_test.primary_species_2 = "helium-4"
 
 integrator.jacobian = 2
-integrator.centered_diff_jac = 1
 
 unit_test.small_dens = 1.e5
 unit_test.small_temp = 1.e6

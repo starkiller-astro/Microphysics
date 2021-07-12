@@ -70,7 +70,9 @@ void jac (burn_t& state, dvode_t& vode_state, MatrixType& pd)
     JacNetArray2D jac_react;
 
     if (jacobian == 3) {
-        numerical_jac(state, jac_react);
+        jac_info_t jac_info;
+        jac_info.h = vode_state.H;
+        numerical_jac(state, jac_info, jac_react);
     } else {
         actual_jac(state, jac_react);
 

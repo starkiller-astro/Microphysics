@@ -16,7 +16,6 @@ unit_test.primary_species_2 = "carbon-12"
 unit_test.primary_species_3 = "oxygen-16"
 
 integrator.jacobian = 2
-integrator.centered_diff_jac = 1
 
 integrator.call_eos_in_rhs = 1
 

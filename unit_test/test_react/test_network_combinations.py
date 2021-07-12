@@ -38,7 +38,6 @@ aprox19_params = {
     "rtol_spec": [1.e-8, 1.e-6],
     "atol_spec": [1.e-8, 1.e-6],
     "jacobian": [1, 2],
-    "centered_diff_jac": ["T"],
     "call_eos_in_rhs": ["T", "F"]
 }
 
@@ -51,7 +50,6 @@ rprox_params = {
     "rtol_spec": [1.e-12, 1.e-8],
     "atol_spec": [1.e-12, 1.e-8],
     "jacobian": [1, 2],
-    "centered_diff_jac": ["T"],
     "call_eos_in_rhs": ["T", "F"],
     "renormalize_abundances": ["T", "F"]
 }

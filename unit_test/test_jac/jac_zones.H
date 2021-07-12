@@ -58,7 +58,10 @@ bool do_jac (int i, int j, int k, Array4<Real> const& state, const plot_t p)
         }
     }
 
-    numerical_jac(burn_state, jac_numerical);
+    jac_info_t jac_info;
+    jac_info.h = 1.e-5_rt;  // timestep really doesn't make sense here
+
+    numerical_jac(burn_state, jac_info, jac_numerical);
 
     int n = 0;
     for (int jj = 1; jj <= neqs; ++jj) {

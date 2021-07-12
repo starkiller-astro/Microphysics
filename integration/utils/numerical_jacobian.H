@@ -15,15 +15,19 @@
 /// always work in terms of X, so the numerical Jacobian is expressed
 /// in terms of X.
 ///
+/// Note: even for the various flavors of SDC, this is the form we
+/// want (we call this dR/dw), and we will convert to 
+
+struct jac_info_t {
+    Real h;
+};
+
+const amrex::Real U = std::numeric_limits<amrex::Real>::epsilon();
+
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void numerical_jac(burn_t& state, JacNetArray2D& jac)
+void numerical_jac(burn_t& state, const jac_info_t jac_info, JacNetArray2D& jac)
 {
 
-
-    // the choice of eps should be ~ sqrt(eps), where eps is machine epsilon.
-    // this balances truncation vs. roundoff error in the differencing
-
-    constexpr Real eps = 1.e-8_rt;
 
     for (int i = 1; i <= neqs; i++) {
         for (int j = 1; j <= neqs; j++) {
@@ -34,151 +38,88 @@ void numerical_jac(burn_t& state, JacNetArray2D& jac)
     YdotNetArray1D ydotp;
     YdotNetArray1D ydotm;
 
-    if (centered_diff_jac) {
-        burn_t state_delp = state;
-        burn_t state_delm = state;
+    burn_t state_delp = state;
 
-        // species derivatives
+    // default -- plus convert the dY/dt into dX/dt
 
-        for (int n = 1; n <= NumSpec; n++) {
-            // perturb species
+    actual_rhs(state, ydotm);
 
-            for (int q = 0; q < NumSpec; q++) {
-                state_delp.xn[q] = state.xn[q];
-            }
-
-            // xn is 0-based
-            state_delp.xn[n-1] *= (1.0_rt + eps);
-
-            actual_rhs(state_delp, ydotp);
-
-            // We integrate X, so convert from the Y we got back from the RHS
-
-            for (int q = 1; q <= NumSpec; q++) {
-                // note ydotp is 1-based, but aion is 0-based
-                ydotp(q) *= aion[q-1];
-            }
-
-            for (int q = 0; q < NumSpec; q++) {
-                state_delm.xn[q] = state.xn[q];
-            }
-
-            // xn is 0-based
-            state_delm.xn[n-1] *= (1.0_rt - eps);
-
-            actual_rhs(state_delm, ydotm);
-
-            for (int q = 1; q <= NumSpec; q++) {
-                // note ydotm is 1-based, but aion is 0-based
-                ydotm(q) *= aion[q-1];
-            }
-
-            for (int m = 1; m <= neqs; m++) {
-                jac(m,n) = 0.5_rt * (ydotp(m) - ydotm(m)) / (eps * state.xn[n-1]);
-            }
-        }
-
-
-        // e derivative
-
-        for (int q = 0; q < NumSpec; q++) {
-            state_delp.xn[q] = state.xn[q];
-        }
-        state_delp.e *= (1.0_rt + eps);
-
-        eos(eos_input_re, state_delp);
-
-        actual_rhs(state_delp, ydotp);
-
-        for (int q = 1; q <= NumSpec; q++) {
-            ydotp(q) *= aion[q-1];
-        }
-
-        for (int q = 0; q < NumSpec; q++) {
-            state_delm.xn[q] = state.xn[q];
-        }
-
-        state_delm.e *= (1.0_rt - eps);
-
-        eos(eos_input_re, state_delm);
-
-        actual_rhs(state_delm, ydotm);
-
-        for (int q = 1; q <= NumSpec; q++) {
-            ydotm(q) *= aion[q-1];
-        }
-
-        for (int m = 1; m <= neqs; m++) {
-            jac(m, net_ienuc) = 0.5_rt * (ydotp(m) - ydotm(m)) / (eps * state.e);
-        }
-
-
-    } else {
-        burn_t state_delp = state;
-
-        // default
-
-        actual_rhs(state, ydotm);
-
-        for (int q = 1; q <= NumSpec; q++) {
-            ydotm(q) *= aion[q-1];
-        }
-
-        // species derivatives
-
-        for (int n = 1; n <= NumSpec; n++) {
-            // perturb species -- we send in X, but ydot is in terms
-            // of dY/dt, not dX/dt
-
-            for (int q = 0; q < NumSpec; q++) {
-                state_delp.xn[q] = state.xn[q];
-            }
-
-            Real h = eps * std::abs(state.xn[n-1]);
-            if (h == 0) {
-                h = eps;
-            }
-
-            state_delp.xn[n-1] += h;
-
-            actual_rhs(state_delp, ydotp);
-
-            // We integrate X, so convert from the Y we got back from the RHS
-
-            for (int q = 1; q <= NumSpec; q++) {
-                ydotp(q) *= aion[q-1];
-            }
-
-            for (int m = 1; m <= neqs; m++) {
-                jac(m, n) = (ydotp(m) - ydotm(m)) / h;
-            }
-        }
-
-        // e derivative
-
-        for (int q = 0; q < NumSpec; q++) {
-            state_delp.xn[q] = state.xn[q];
-        }
-
-        Real h = eps * std::abs(state.e);
-        if (h == 0) {
-            h = eps;
-        }
-
-        state_delp.e += h;
-
-        eos(eos_input_re, state_delp);
-
-        actual_rhs(state_delp, ydotp);
-
-        for (int q = 1; q <= NumSpec; q++) {
-            ydotp(q) *= aion[q-1];
-        }
-
-        for (int m = 1; m <= neqs; m++) {
-            jac(m, net_ienuc) = (ydotp(m) - ydotm(m)) / h;
-        }
-
+    for (int q = 1; q <= NumSpec; q++) {
+        ydotm(q) *= aion[q-1];
     }
+
+    // start by computing |f|, which is the norm of the RHS / weight
+
+    Real fac = 0.0_rt;
+    Real w;
+    for (int i = 1; i <= NumSpec; i++) {
+        // the weight is 1 / EWT defined in VODE
+        w = 1.0_rt / (rtol_spec * std::abs(state.xn[i-1]) + atol_spec);
+        fac += (ydotm(i) * w) * (ydotm(i) * w);
+    }
+    w = 1.0_rt / (rtol_enuc * std::abs(state.e) + atol_enuc);
+    fac += (ydotm(net_ienuc) * w) * (ydotm(net_ienuc) * w);
+    fac = std::sqrt(fac / neqs);
+
+    // now compute r0, defined in the LSODE paper, Eq. 3.34
+
+    Real r0 = 1000.0_rt * std::abs(jac_info.h) * U * neqs * fac;
+    if (r0 == 0.0_rt) {
+        r0 = 1.0_rt;
+    }
+
+    // now we compute the Jacobian elements
+
+    // species derivatives
+
+    for (int n = 1; n <= NumSpec; n++) {
+        // perturb species -- we send in X, but ydot is in terms
+        // of dY/dt, not dX/dt
+
+        Real yj = state_delp.xn[n-1];
+
+        w = rtol_spec * std::abs(yj) + atol_spec;
+
+        // the incremement we use in the derivative is defined in the LSODE paper, Eq. 3.35
+
+        Real dy = amrex::max(std::sqrt(U) * std::abs(yj), r0 * w);
+
+        state_delp.xn[n-1] += dy;
+
+        actual_rhs(state_delp, ydotp);
+
+        // We integrate X, so convert from the Y we got back from the RHS
+
+        for (int q = 1; q <= NumSpec; q++) {
+            ydotp(q) *= aion[q-1];
+        }
+
+        for (int m = 1; m <= neqs; m++) {
+            jac(m, n) = (ydotp(m) - ydotm(m)) / dy;
+        }
+
+        state_delp.xn[n-1] = yj;
+    }
+
+    // e derivative
+
+    w = rtol_enuc * std::abs(state.e) + atol_enuc;
+
+    Real dy = amrex::max(std::sqrt(U) * std::abs(state.e), r0 * w);
+
+    state_delp.e += dy;
+
+    eos(eos_input_re, state_delp);
+
+    actual_rhs(state_delp, ydotp);
+
+    for (int q = 1; q <= NumSpec; q++) {
+        ydotp(q) *= aion[q-1];
+    }
+
+    for (int m = 1; m <= neqs; m++) {
+        jac(m, net_ienuc) = (ydotp(m) - ydotm(m)) / dy;
+    }
+
 }
 #endif
