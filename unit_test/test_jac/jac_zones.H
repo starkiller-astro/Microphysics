@@ -10,7 +10,7 @@
 #include <extern_parameters.H>
 #include <ArrayUtilities.H>
 #include <variables.H>
-#include <numerical_jacobian.H>
+#include <integration_utils.H>
 
 #ifndef NETWORK_HAS_CXX_IMPLEMENTATION
 #include <fortran_to_cxx_actual_rhs.H>

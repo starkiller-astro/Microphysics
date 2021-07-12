@@ -13,7 +13,7 @@
 #else
 #include <fortran_to_cxx_actual_rhs.H>
 #endif
-#include <numerical_jacobian.H>
+#include <integration_utils.H>
 
 // The f_rhs routine provides the right-hand-side for the DVODE solver.
 // This is a generic interface that calls the specific RHS routine in the

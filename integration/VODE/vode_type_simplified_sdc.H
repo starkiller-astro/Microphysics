@@ -358,44 +358,4 @@ void vode_to_burn(const Real time, dvode_t& vode_state, burn_t& state)
 }
 
 
-AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-void rhs_to_vode(const Real time, burn_t& state,
-                 YdotNetArray1D& ydot_react, dvode_t& vode_state,
-                 RArray1D& ydot)
-{
-
-
-    fill_unevolved_variables(time, state, vode_state);
-
-    // ydot_react has just the contribution to the RHS from the
-    // reaction network.  Note that these are in terms of dY/dt
-
-    // start with the contribution from the non-reacting sources
-
-    // Note: both ydot and ydot_react are 1-based
-    for (int n = 0; n < SVAR_EVOLVE; n++) {
-        ydot(n+1) = state.ydot_a[n];
-    }
-
-    // add in the reacting terms -- here we convert from dY/dt to dX/dt
-    // The species derivatives are the first NumSpec components of
-    // ydot_react
-
-    for (int n = 1; n <= NumSpec; n++) {
-        ydot(SFS+n) += state.rho * aion[n-1] * ydot_react(n);
-    }
-
-#if defined(SDC_EVOLVE_ENERGY)
-
-    ydot(SEINT+1) += state.rho * ydot_react(net_ienuc);
-    ydot(SEDEN+1) += state.rho * ydot_react(net_ienuc);
-
-#elif defined(SDC_EVOLVE_ENTHALPY)
-
-    ydot(SENTH+1) += state.rho * ydot_react(net_ienuc);
-
-#endif
-
-}
-
 #endif

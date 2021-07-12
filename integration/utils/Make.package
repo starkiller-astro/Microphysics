@@ -8,4 +8,5 @@ ifeq ($(USE_FORT_MICROPHYSICS), TRUE)
   endif
 endif
 CEXE_headers += jacobian_utilities.H
-CEXE_headers += numerical_jacobian.H
+CEXE_headers += integration_utils.H
+CEXE_sources += numerical_jacobian.cpp
