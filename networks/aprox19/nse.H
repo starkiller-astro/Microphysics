@@ -51,13 +51,15 @@ void init_nse() {
 
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
-bool in_nse(const eos_t& state) {
+bool in_nse(const eos_t& state, const bool relax = false) {
 
   using namespace Species;
 
+  Real f = relax ? nse_relax_factor : 1.0_rt;
+
   bool nse_check = false;
 
-  if (state.rho > rho_nse && state.T > T_nse) {
+  if (state.rho > f * rho_nse && state.T > f * T_nse) {
 
     // Ma checks on Fe-group (for our composition, this means Cr48, Fe52, Fe54, Ni56)
     // and C-group (for us, that is C12, N14)
@@ -71,7 +73,10 @@ bool in_nse(const eos_t& state) {
     Real O_group = state.xn[O16-1];
     Real Si_group = state.xn[Si28-1];
 
-    if (Fe_group + He_group > He_Fe_nse && C_group < C_nse && O_group < O_nse && Si_group < Si_nse) {
+    if (Fe_group + He_group > He_Fe_nse &&
+        C_group < C_nse &&
+        O_group < O_nse &&
+        Si_group < Si_nse / f) {
       nse_check = true;
     }
   }
@@ -82,13 +87,15 @@ bool in_nse(const eos_t& state) {
 
 
 AMREX_GPU_HOST_DEVICE AMREX_INLINE
-bool in_nse(const burn_t& state) {
+bool in_nse(const burn_t& state, const bool relax = false) {
 
     using namespace Species;
 
+    Real f = relax ? nse_relax_factor : 1.0_rt;
+
     bool nse_check = false;
 
-    if (state.rho > rho_nse && state.T > T_nse) {
+    if (state.rho > f * rho_nse && state.T > f * T_nse) {
 
         // Ma checks on Fe-group (for our composition, this means Cr48, Fe52, Fe54, Ni56)
         // and C-group (for us, that is C12, N14)
@@ -113,7 +120,10 @@ bool in_nse(const burn_t& state) {
         Real Si_group = state.y[SFS+Si28-1] / state.rho;
 #endif
 
-        if (Fe_group + He_group > He_Fe_nse && C_group < C_nse && O_group < O_nse && Si_group < Si_nse) {
+        if (Fe_group + He_group > He_Fe_nse &&
+            C_group < C_nse &&
+            O_group < O_nse &&
+            Si_group < Si_nse / f) {
             nse_check = true;
         }
     }

@@ -152,6 +152,23 @@ void renormalize_species(burn_t& state)
         state.y[SFS+n] /= rhoX_sum;
     }
 
+#ifdef NSE_THERMO
+    // make the aux data consistent with the vode_state X's
+
+    eos_re_t eos_state;
+    for (int n = 0; n < NumSpec; n++) {
+        eos_state.xn[n] = state.y[SFS+n] / state.y[SRHO];
+    }
+
+    set_nse_aux_from_X(eos_state);
+
+    // also store it in the burn_t state
+
+    for (int n = 0; n < NumAux; n++) {
+        state.y[SFX+n] = state.y[SRHO] * eos_state.aux[n];
+    }
+#endif
+
 #endif
 
 }
@@ -159,14 +176,6 @@ void renormalize_species(burn_t& state)
 AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
 void clean_state(const Real time, burn_t& state, dvode_t& vode_state)
 {
-
-    // This routine makes the state we are integrating in vode_state
-    // consistent We will need to use some of the unevolved data from
-    // state, but only vode_state is updated here
-
-    // update rho, rho*u, etc.
-
-    fill_unevolved_variables(time, state, vode_state);
 
     // Ensure that mass fractions always stay positive.
 
@@ -182,40 +191,6 @@ void clean_state(const Real time, burn_t& state, dvode_t& vode_state)
     if (renormalize_abundances) {
         renormalize_species(time, state, vode_state);
     }
-
-#ifdef SDC_EVOLVE_ENERGY
-
-    // Ensure that internal energy never goes above the maximum limit
-    // provided by the EOS. Same for the internal energy implied by the
-    // total energy (which we get by subtracting kinetic energy).
-
-    eos_re_t eos_state;
-    eos_state.rho = state.y[SRHO];
-    eos_state.T = MAX_TEMP;
-    for (int n = 0; n < NumSpec; n++) {
-        // vode_state.y uses 1-based indexing
-        eos_state.xn[n] = vode_state.y(SFS+1+n) / state.rho;
-    }
-#ifdef NSE_THERMO
-    // make the aux data here to be consistent with the renormalized
-    // abundances
-    set_nse_aux_from_X(eos_state);
-#endif
-
-    eos(eos_input_rt, eos_state);
-
-    Real max_e = eos_state.e;
-
-    vode_state.y(SEINT+1) = amrex::min(state.rho * max_e, vode_state.y(SEINT+1));
-
-    Real ke = vode_state.y(SEDEN+1) -
-        0.5_rt * (state.y[SMX] * state.y[SMX] +
-                  state.y[SMY] * state.y[SMY] +
-                  state.y[SMZ] * state.y[SMZ]) / state.rho;
-
-    vode_state.y(SEDEN+1) = amrex::min(state.rho * max_e + ke, vode_state.y(SEDEN+1));
-
-#endif
 
 }
 
@@ -268,9 +243,9 @@ void vode_to_burn(const Real time, dvode_t& vode_state, burn_t& state)
     }
 
     // update rho, rho*u, ... in the burn_t state
+    // this may be redundant, but better to be safe
 
     fill_unevolved_variables(time, state, vode_state);
-
 
     Real rhoInv = 1.0_rt / state.rho;
 
@@ -334,6 +309,8 @@ void vode_to_burn(const Real time, dvode_t& vode_state, burn_t& state)
 
 #endif
 
+
+
     // fill the rest of the burn_t state
 
     eos_to_burn(eos_state, state);
@@ -347,8 +324,6 @@ void rhs_to_vode(const Real time, burn_t& state,
                  RArray1D& ydot)
 {
 
-
-    fill_unevolved_variables(time, state, vode_state);
 
     // ydot_react has just the contribution to the RHS from the
     // reaction network.  Note that these are in terms of dY/dt

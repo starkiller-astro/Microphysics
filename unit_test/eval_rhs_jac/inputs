@@ -1,0 +1,16 @@
+unit_test.density = 1.e8
+unit_test.temperature = 3.e9
+
+unit_test.X1 = 0.5
+unit_test.X2 = 0.2
+unit_test.X3 = 0.2
+unit_test.X4 = 0.01
+unit_test.X5 = 0.01
+unit_test.X6 = 0.01
+unit_test.X7 = 0.01
+unit_test.X8 = 0.01
+unit_test.X9 = 0.01
+unit_test.X10 = 0.01
+unit_test.X11 = 0.01
+unit_test.X12 = 0.01
+unit_test.X13 = 0.01

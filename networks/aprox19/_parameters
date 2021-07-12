@@ -7,3 +7,7 @@ O_nse        real    0.01
 Si_nse       real    0.01
 He_Fe_nse    real    0.88
 eta          real    1.0
+
+# factor (< 1) by which to relax the criteria for entering NSE.
+# This is only applied after a failed burn.
+nse_relax_factor  real   1.0
