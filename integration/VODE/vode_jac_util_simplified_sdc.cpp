@@ -14,26 +14,84 @@ void jac_to_vode(const Real time, burn_t& state,
     // only support a dense Jacobian.
 
 
-    // we come in with jac_react being the Jacobian of the reacting system
-    // but we need to convert it to the SDC system
-
-
-    // SVAR_EVOLVE doesn't include rho, but we will include it here in
-    // the intermediate this affects both the Castro
-    // (SDC_EVOLVE_ENERGY) and MAESTROeX (SDC_EVOLVE_ENTHALPY) systems.
+    // we come in with jac_react being the Jacobian of the reacting
+    // system but we need to convert it to the SDC system.  jac_react
+    // has the derivatives with respect to the native network
+    // variables, X, e.
 
 #if defined(SDC_EVOLVE_ENERGY)
-    constexpr int iwrho = 1;
-    constexpr int iwfs = 2;
-    constexpr int iwK = iwfs+NumSpec;
-    constexpr int iwe = iwK+1;
-    constexpr int iwvar = 3+NumSpec;
-#else
+
+    // e row
+    eos_re_t eos_state;
+    eos_state.rho = state.rho;
+    eos_state.T = 1.e4_rt;   // initial guess
+    for (int n = 0; n < NumSpec; n++) {
+        eos_state.xn[n] = vode_state.y(SFS+1+n) / state.rho;
+    }
+#ifdef NSE_THERMO
+    set_nse_aux_from_X(eos_state);
+#endif
+
+    eos_state.e = vode_state.y(SEINT+1) / state.rho;
+
+    eos(eos_input_re, eos_state);
+
+    const eos_xderivs_t eos_xderivs = composition_derivatives(eos_state);
+
+
+    // The system we integrate has the form (rho X_k, rho E, rho e)
+
+    // dR/dw has the form:
+    //
+    //  SFS         / d(rho X1dot)/dX1   d(rho X1dit)/dX2   ...  0   d(rho X1dot)/dT \
+    //              | d(rho X2dot)/dX1   d(rho X2dot)/dX2   ...  0   d(rho X2dot)/dT |
+    //  SFS-1+nspec |   ...                                      0                   |
+    //  SEDEN       | d(rho Edot)/dX1    d(rho Edot)/dX2    ...  0   d(rho Edot)/dT  |
+    //  SEINT       \ d(rho Edot)/dX1    d(rho Edot)/dX2    ...  0   d(rho Edot)/dT  /
+    //
+    //                   SFS                                    SEDEN     SEINT
+
+
+    // keep in mind here that that we are using 1-based indexing but SFS, ... are 0-based.
+
+    // start with the d(omegadot)/d* rows
+
+    for (int m = 1; m <= NumSpec; m++) {
+
+        // fill all elements of row m 
+
+        // first the species derivatives
+
+        for (int n = 1; n <= NumSpec; n++) {
+            jac(SFS+m, SFS+n) = jac_react(m, n) - jac_react(m, net_ienuc) * eos_xderivs.dedX[n-1];
+        }
+
+        // now the energy derivatives
+
+        jac(SFS+m, SEDEN+1) = 0.0_rt;
+
+        jac(SFS+m, SEINT+1) = jac_react(m, net_ienuc);
+    }
+
+    // now the energy rows
+
+    for (int n = 1; n <= NumSpec; n++) {
+        jac(SEDEN+1, SFS+n) = jac_react(net_ienuc, n) - jac_react(net_ienuc, net_ienuc) * eos_xderivs.dedX[n-1];
+        jac(SEINT+1, SFS+n) = jac(SEDEN+1, SFS+n);
+    }
+
+    jac(SEDEN+1, SEDEN+1) = 0.0_rt;
+    jac(SEINT+1, SEDEN+1) = 0.0_rt;
+
+    jac(SEDEN+1, SEINT+1) = jac_react(net_ienuc, net_ienuc);
+    jac(SEINT+1, SEINT+1) = jac_react(net_ienuc, net_ienuc);
+
+#elif defined(SDC_EVOLVE_ENTHALPY)
+
     constexpr int iwrho = 1;
     constexpr int iwfs=2;
     constexpr int iwe = iwfs+NumSpec;
     constexpr int iwvar = 2+NumSpec;
-#endif
 
     amrex::Array2D<Real, 1, SVAR_EVOLVE+1, 1, iwvar> dRdw = {0.0_rt};
     amrex::Array2D<Real, 1, iwvar, 1, SVAR_EVOLVE+1> dwdU = {0.0_rt};
@@ -42,7 +100,6 @@ void jac_to_vode(const Real time, burn_t& state,
 
     // this is 0-based to be consistent with SFS, SEDEN, ...
     constexpr int SRHO_EXTRA = SVAR_EVOLVE;
-
 
     // jac_react has the derivatives with respect to the native
     // network variables, X, T. e.  It does not have derivatives with
@@ -73,136 +130,6 @@ void jac_to_vode(const Real time, burn_t& state,
         ydot_pert(n) = ydot_pert(n) * aion[n-1];
     }
 
-#if defined(SDC_EVOLVE_ENERGY)
-
-    // The system we integrate has the form (rho X_k, rho E, rho e), but we will temporarily augment
-    // This with rho, giving U = (rho, rho X_k, rho E, rho e).
-    //
-    // The intermediate state, w, has the form w = (rho, X_k, K, T), where K is 1/2 |U|^2
-
-    // First compute dR/dw using the Jacobian that comes from the
-    // network.  Note: this doesn't include density derivatives, so we
-    // compute those via differencing.
-
-    // dR/dw has the form:
-    //
-    //  SFS         / d(rho X1dot)/drho  d(rho X1dot)/dX1   d(rho X1dit)/dX2   ...  0   d(rho X1dot)/dT \
-    //              | d(rho X2dot)/drho  d(rho X2dot)/dX1   d(rho X2dot)/dX2   ...  0   d(rho X2dot)/dT |
-    //  SFS-1+nspec |   ...                                                         0                   |
-    //  SEINT       | d(rho Edot)/drho   d(rho Edot)/dX1    d(rho Edot)/dX2    ...  0   d(rho Edot)/dT  |
-    //  SEDEN       | d(rho Edot)/drho   d(rho Edot)/dX1    d(rho Edot)/dX2    ...  0   d(rho Edot)/dT  |
-    //  SRHO_EXTRA  \        0                  0                  0                0          0       /
-    //
-    //                                                                              ^
-    //                                                                              K derivatives
-
-
-    // fill the column of dRdw corresponding to the derivative
-    // with respect to rho
-
-    // keep in mind here that that we are using 1-based indexing but SFS, ... are 0-based.
-
-    for (int m = 1; m <= NumSpec; m++) {
-        // d( d(rho X_m)/dt)/drho
-        dRdw(SFS+m, iwrho) = ydot(m) + state.rho * (ydot_pert(m) - ydot(m))/(eps * state.rho);
-    }
-
-    // d( d(rho e)/dt)/drho
-    dRdw(SEINT+1, iwrho) = ydot(net_ienuc) +
-        state.rho * (ydot_pert(net_ienuc) - ydot(net_ienuc))/(eps * state.rho);
-
-    // d( d(rho E)/dt)/drho
-    dRdw(SEDEN+1, iwrho) = dRdw(SEINT+1, iwrho);
-
-    // fill the columns of dRdw corresponding to each derivative
-    // with respect to species mass fraction
-    for (int n = 1; n <= NumSpec; n++) {
-        for (int m = 1; m <= NumSpec; m++) {
-            // d( d(rho X_m)/dt)/dX_n
-            dRdw(SFS+m, iwfs-1+n) = state.rho * jac_react(m, n);
-        }
-
-        // d( d(rho e)/dt)/dX_n
-        dRdw(SEINT+1, iwfs-1+n) = state.rho * jac_react(net_ienuc, n);
-
-        // d( d(rho E)/dt)/dX_n
-        dRdw(SEDEN+1, iwfs-1+n) = state.rho * jac_react(net_ienuc, n);
-    }
-
-    // now fill the column corresponding to derivatives with respect to
-    // internal energy -- this column is iwe
-
-    // d( d(rho X_m)/dt)/de
-    for (int m = 1; m <= NumSpec; m++) {
-        dRdw(SFS+m, iwe) = state.rho * jac_react(m, net_ienuc);
-    }
-
-    // d( d(rho e)/dt)/de
-    dRdw(SEINT+1, iwe) = state.rho * jac_react(net_ienuc, net_ienuc);
-
-    // d( d(rho E)/dt)/de
-    dRdw(SEDEN+1, iwe) = dRdw(SEINT+1, iwe);
-
-    // for the K derivatives, dRdw(:, iwK), and the rho sources,
-    // dRdw(SRHO_EXTRA, :), we don't need to do anything, because these
-    // are already zeroed out
-
-    // that completes dRdw
-
-
-    // construct dwdU
-
-    // kinetic energy, K = 1/2 |U|^2
-    Real kineng = 0.5_rt * (state.y[SMX] * state.y[SMX] +
-                            state.y[SMY] * state.y[SMY] +
-                            state.y[SMZ] * state.y[SMZ]) /
-        (state.rho * state.rho);
-
-    // density row (iwrho)
-    dwdU(iwrho, SRHO_EXTRA+1) = 1.0_rt;
-
-    // species rows
-    for (int m = 1; m <= NumSpec; m++) {
-        dwdU(iwfs-1+m, SFS+m) = 1.0_rt / state.rho;
-        dwdU(iwfs-1+m, SRHO_EXTRA+1) = -state.xn[m-1] / state.rho;
-    }
-
-    // K row
-    dwdU(iwK, SRHO_EXTRA+1) = -kineng / state.rho;
-    dwdU(iwK, SEINT+1) = -1.0_rt / state.rho;
-    dwdU(iwK, SEDEN+1) = 1.0_rt / state.rho;
-
-    // e row
-    eos_re_t eos_state;
-    eos_state.rho = state.rho;
-    eos_state.T = 1.e4_rt;   // initial guess
-    for (int n = 0; n < NumSpec; n++) {
-        eos_state.xn[n] = vode_state.y(SFS+1+n) / state.rho;
-    }
-#ifdef NSE_THERMO
-    set_nse_aux_from_X(eos_state);
-#endif
-
-    eos_state.e = vode_state.y(SEINT+1) / state.rho;
-
-    eos(eos_input_re, eos_state);
-
-    const eos_xderivs_t eos_xderivs = composition_derivatives(eos_state);
-
-    // internal energy row
-    for (int n = 1; n <= NumSpec; n++) {
-        dwdU(iwe, SFS+n) = -eos_xderivs.dedX[n-1] / state.rho;
-    }
-    dwdU(iwe, SEINT+1) = 1.0_rt / state.rho;
-    dwdU(iwe, SEDEN+1) = 0.0_rt;
-    Real X_dedX_sum = 0.0_rt;
-    for (int n = 0; n < NumSpec; n++) {
-        X_dedX_sum += eos_state.xn[n] * eos_xderivs.dedX[n];
-    }
-    dwdU(iwe, SRHO_EXTRA+1) =
-        (X_dedX_sum - eos_state.e) / state.rho;
-
-#elif defined(SDC_EVOLVE_ENTHALPY)
 
     // Our R source has components for species and enthalpy only.  But
     // we will extend it here to include the mass density too to ensure
@@ -305,7 +232,6 @@ void jac_to_vode(const Real time, burn_t& state,
         (X_dhdX_sum - state.rho * eos_state.dhdr - eos_state.h) /
         (state.rho * eos_state.dhdT);
 
-#endif
 
 
     // compute J = dR/dw dw/dU
@@ -331,5 +257,8 @@ void jac_to_vode(const Real time, burn_t& state,
             }
         }
     }
+
+#endif
+
 
 }
